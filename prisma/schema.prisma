@@ -1,0 +1,206 @@
+// Este es el archivo de esquema de Prisma
+// Aprende más sobre Prisma aquí: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Rol {
+  RolID String @id @default(uuid())
+  Name  String @unique
+  users User[]
+}
+
+model User {
+  UserID         String            @id @default(uuid())
+  RolID          String
+  Name           String
+  Email          String            @unique
+  Password       String
+  Phone          String
+  Address        String
+  RegisterDate   DateTime
+  rol            Rol               @relation(fields: [RolID], references: [RolID])
+  cart           Cart?
+  orders         Order[]
+  shipping       ShippingAddress[]
+  viewedProducts ViewedProduct[]
+  productReviews ProductReview[]
+}
+
+model Product {
+  ProductID     String          @id @default(uuid()) // ID único para el producto
+  Name          String // Nombre del producto
+  Description   String? // Descripción del producto (opcional)
+  Price         Float // Precio del producto
+  Stock         Int // Cantidad disponible
+  CategoriesID  String // ID de la categoría a la que pertenece el producto
+  ImageURL      String // URL de la imagen del producto
+  CreationDate  DateTime // Fecha de creación del producto
+  categories    Category        @relation(fields: [CategoriesID], references: [CategoryID]) // Relación con la categoría
+  options       Option[] // Relación uno a muchos con las opciones
+  variants      Variant[] // Relación uno a muchos con las variantes del producto
+  Inventory     Inventory[]
+  ViewedProduct ViewedProduct[]
+  ProductReview ProductReview[]
+}
+
+model Option {
+  OptionID     String        @id @default(uuid()) // ID único para la opción
+  ProductID    String // ID del producto al que pertenece la opción
+  Name         String // Nombre de la opción (ej. "Color", "Talla", "Edad")
+  product      Product       @relation(fields: [ProductID], references: [ProductID]) // Relación con el producto
+  optionValues OptionValue[] // Relación uno a muchos con los valores de la opción
+}
+
+model OptionValue {
+  ValueID       String          @id @default(uuid()) // ID único para el valor de la opción
+  OptionID      String // ID de la opción a la que pertenece el valor
+  Value         String // Valor de la opción (ej. "Rojo", "35", "Niño")
+  CreationDate  DateTime // Fecha de creación del valor
+  option        Option          @relation(fields: [OptionID], references: [OptionID]) // Relación con la opción
+  VariantOption VariantOption[]
+}
+
+model Variant {
+  VariantID      String          @id @default(uuid()) // ID único para la variante
+  ProductID      String // ID del producto al que pertenece la variante
+  SKU            String // SKU de la variante
+  Price          Float // Precio de la variante
+  Stock          Int // Stock de la variante
+  ImageURL       String // URL de la imagen de la variante
+  CreationDate   DateTime // Fecha de creación de la variante
+  product        Product         @relation(fields: [ProductID], references: [ProductID]) // Relación con el producto
+  variantOptions VariantOption[] // Relación con las opciones de la variante
+  CartDetail     CartDetail[]
+  OrderDetail    OrderDetail[]
+}
+
+model VariantOption {
+  VariantID     String // ID de la variante
+  OptionValueID String // ID del valor de la opción
+  variant       Variant     @relation(fields: [VariantID], references: [VariantID]) // Relación con la variante
+  optionValue   OptionValue @relation(fields: [OptionValueID], references: [ValueID]) // Relación con el valor de la opción
+
+  @@id([VariantID, OptionValueID]) // Combinación única de variante y valor de opción
+}
+
+model Category {
+  CategoryID  String    @id @default(uuid()) // ID único para la categoría
+  Name        String // Nombre de la categoría
+  Description String? // Descripción de la categoría (opcional)
+  products    Product[] // Relación uno a muchos con los productos
+}
+
+model Inventory {
+  InventoryID  String   @id @default(uuid())
+  ProductID    String
+  InitialStock Int
+  Entries      Int
+  Exits        Int
+  EndStock     Int
+  UpdateDate   DateTime
+  product      Product  @relation(fields: [ProductID], references: [ProductID])
+}
+
+model ViewedProduct {
+  ViewedID  String   @id @default(uuid())
+  UserID    String
+  ProductID String
+  ViewDate  DateTime
+  user      User     @relation(fields: [UserID], references: [UserID])
+  product   Product  @relation(fields: [ProductID], references: [ProductID])
+}
+
+model ProductReview {
+  ReviewID      String   @id @default(uuid())
+  UserID        String
+  ProductID     String
+  Qualification Int
+  Comment       String
+  ReviewDate    DateTime
+  user          User     @relation(fields: [UserID], references: [UserID])
+  product       Product  @relation(fields: [ProductID], references: [ProductID])
+}
+
+model Cart {
+  CartID       String       @id @default(uuid())
+  UserID       String       @unique
+  CreationDate DateTime
+  user         User         @relation(fields: [UserID], references: [UserID])
+  cartDetails  CartDetail[]
+}
+
+model CartDetail {
+  CartDetailID String  @id @default(uuid())
+  CartID       String
+  ProductID    String
+  Quantity     Int
+  UnitPrice    Float
+  cart         Cart    @relation(fields: [CartID], references: [CartID])
+  product      Variant @relation(fields: [ProductID], references: [VariantID])
+}
+
+model Order {
+  OrderID      String        @id @default(uuid())
+  UserID       String
+  OrderDate    DateTime
+  Status       String
+  Total        Float
+  user         User          @relation(fields: [UserID], references: [UserID])
+  orderDetails OrderDetail[]
+  Payment      Payment[]
+}
+
+model OrderDetail {
+  OrderDetailID String  @id @default(uuid())
+  OrderID       String
+  ProductID     String
+  Quantity      Int
+  UnitPrice     Float
+  order         Order   @relation(fields: [OrderID], references: [OrderID])
+  product       Variant @relation(fields: [ProductID], references: [VariantID])
+}
+
+model PaymentMethod {
+  PaymentMethodID String    @id @default(uuid())
+  Name            String
+  Description     String?
+  payments        Payment[]
+}
+
+model Payment {
+  PaymentID       String        @id @default(uuid())
+  OrderID         String
+  PaymentMethodID String
+  Amount          Float
+  PaymentDate     DateTime
+  order           Order         @relation(fields: [OrderID], references: [OrderID])
+  paymentMethod   PaymentMethod @relation(fields: [PaymentMethodID], references: [PaymentMethodID])
+}
+
+model ShippingAddress {
+  AddressID String @id @default(uuid())
+  UserID    String
+  Address   String
+  City      String
+  State     String
+  ZipCode   String
+  Country   String
+  user      User   @relation(fields: [UserID], references: [UserID])
+}
+
+model Coupon {
+  CouponID        String   @id @default(uuid())
+  Code            String   @unique
+  Description     String
+  Discount        Float
+  StartDate       DateTime
+  EndDate         DateTime
+  MinimumPurchase Float
+}
